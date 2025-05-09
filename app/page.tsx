@@ -1,103 +1,235 @@
-import Image from "next/image";
+'use client';
+
+import Header from "./components/Header";
+import Footer from "./components/Footer";
+import TaskForm from "./components/TaskForm";
+import TaskList from "./components/TaskList";
+import React, { useState, useEffect } from "react";
+import api from "../services/api";
+import { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
+import ConfirmModal from "./components/ConfirmModal";
+import Cookies from 'js-cookie';
+
+interface Task {
+  id: number;
+  title: string;
+  description: string;
+}
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [modal, setModal] = useState<{
+    open: boolean;
+    action: null | "done" | "delete" | "cancel";
+    taskId: number | null;
+  }>({ open: false, action: null, taskId: null });
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+  const [isLoggedIn, setIsLoggedIn] = useState(() => !!Cookies.get('token'));
+
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const token = Cookies.get('token');
+      const isLoggedInNow = !!token;
+      setIsLoggedIn(isLoggedInNow);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTasks();
+  }, []);
+ 
+  const handleAddTask = async (title: string, description: string) => {
+    setCreating(true);
+    try {
+    
+      setError("");
+      if(!isLoggedIn){
+        await api.post("api/guest/tasks", { title, description });
+      }else{
+        await api.post("api/tasks", { title, description });
+      }
+      await fetchTasks();
+      toast.success("Task created successfully!");
+    } catch (err) {
+      if (err.response && err.response.status === 401) {
+        localStorage.removeItem('user');
+        Cookies.remove('token');
+        window.location.reload();
+      } else {
+        setError("Failed to add task.");
+      }
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleDoneTask = async (id: number) => {
+    try {
+      setError("");
+      if(!isLoggedIn){
+        await api.put(`api/guest/tasks/update-status/${id}`,{status:'done'});
+      }else{
+        await api.put(`api/tasks/update-status/${id}`,{status:'done'});
+      }
+      await fetchTasks();
+      toast.success("Task updated successfully!");
+    } catch (err) {
+      if (err.response && err.response.status === 401) {
+        localStorage.removeItem('user');
+        Cookies.remove('token');
+        window.location.reload();
+      } else {
+        setError("Failed to update task.");
+      }
+    }
+  };
+
+  const handleDeleteTask = async (id: number) => {
+    try {
+      setError("");
+      if(!isLoggedIn){
+        await api.delete(`api/guest/tasks/${id}`);
+      }else{
+        await api.delete(`api/tasks/${id}`);
+      }
+      await fetchTasks();
+      toast.success("Task deleted successfully!");
+    } catch (err) {
+      if (err.response && err.response.status === 401) {
+        localStorage.removeItem('user');
+        Cookies.remove('token');
+        window.location.reload();
+      } else {
+        setError("Failed to delete task.");
+      }
+    }
+  };
+
+  const handleCancelTask = async (id: number) => {
+    try {
+      setError("");
+     
+      if(!isLoggedIn){
+        await api.put(`api/guest/tasks/update-status/${id}`,{status:'cancelled'});
+      }else{
+        await api.put(`api/tasks/update-status/${id}`,{status:'cancelled'});
+      }
+      await fetchTasks();
+      toast("Task cancelled.", { icon: "🚫" });
+    } catch (err) {
+      if (err.response && err.response.status === 401) {
+        localStorage.removeItem('user');
+        Cookies.remove('token');
+        window.location.reload();
+      } else {
+        setError("Failed to update task.");
+      }
+    }
+    
+  };
+
+  const fetchTasks = async () => {
+    setLoading(true);
+    try {
+      const token = Cookies.get('token');
+      if (!token) {
+        const res = await api.get("api/guest/tasks");
+        setTasks(res.data.data || res.data);
+      } else {
+        const res = await api.get("api/tasks");
+        setTasks(res.data.data || res.data);
+      }
+      setError("");
+    } catch (error) {
+      if (error.response && error.response.status === 401) {
+        localStorage.removeItem('user');
+        Cookies.remove('token');
+        window.location.reload();
+      } else {
+        setError("Failed to load tasks.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openModal = (action: "done" | "delete" | "cancel", taskId: number) => {
+    setModal({ open: true, action, taskId });
+  };
+
+  const closeModal = () => setModal({ open: false, action: null, taskId: null });
+
+  const handleModalConfirm = async () => {
+    if (!modal.taskId) return;
+    if (modal.action === "done") await handleDoneTask(modal.taskId);
+    if (modal.action === "delete") await handleDeleteTask(modal.taskId);
+    if (modal.action === "cancel") await handleCancelTask(modal.taskId);
+    closeModal();
+  };
+
+  return (
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50">
+      <Toaster position="top-right" />
+      <Header />
+      <main className="flex-1 flex flex-col md:flex-row gap-10 px-4 py-10 max-w-6xl mx-auto w-full">
+        <div className="flex-1 flex items-start justify-center">
+          <TaskForm onAdd={handleAddTask} />
+        </div>
+        <div className="flex-1 flex items-start justify-center">
+          {loading ? (
+            <div>Loading...</div>
+          ) : (
+            <TaskList
+              tasks={tasks}
+              onDone={id => openModal("done", id)}
+              onDelete={id => openModal("delete", id)}
+              onCancel={id => openModal("cancel", id)}
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+          )}
         </div>
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      {creating && (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-blue-100 text-blue-700 px-6 py-3 rounded shadow-lg z-50">
+          Creating task...
+        </div>
+      )}
+      {error && (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-red-100 text-red-700 px-6 py-3 rounded shadow-lg z-50">
+          {error}
+        </div>
+      )}
+      <ConfirmModal
+        open={modal.open}
+        title={
+          modal.action === "done"
+            ? "Mark as Done"
+            : modal.action === "delete"
+            ? "Delete Task"
+            : "Cancel Task"
+        }
+        message={
+          modal.action === "done"
+            ? "Are you sure you want to mark this task as done?"
+            : modal.action === "delete"
+            ? "Are you sure you want to delete this task? This action cannot be undone."
+            : "Are you sure you want to cancel this task?"
+        }
+        onConfirm={handleModalConfirm}
+        onCancel={closeModal}
+        confirmText={
+          modal.action === "done"
+            ? "Yes, Done"
+            : modal.action === "delete"
+            ? "Yes, Delete"
+            : "Yes, Cancel"
+        }
+      />
+      <Footer />
     </div>
   );
 }
