@@ -39,28 +39,31 @@ const TaskList: React.FC<TaskListProps> = ({ tasks, onDone, onCancel, onDelete }
             </span>
           )}
           <div className="text-gray-600 text-base mb-2 pl-7 break-words max-w-xs" title={task.description}>{task.description}</div>
-          <div className="self-end flex gap-2">
-            <button
-              onClick={() => onDone(task.id)}
-              disabled={task.status !== 'pending'}
-              className={`bg-gradient-to-r from-green-400 to-blue-400 hover:from-green-500 hover:to-blue-500 text-white font-semibold px-4 py-1.5 rounded-lg flex items-center gap-2 transition shadow-md ${task.status !== 'pending' ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              <FaCheckCircle /> Done
-            </button>
-            <button
-              onClick={() => onCancel && onCancel(task.id)}
-              disabled={task.status !== 'pending'}
-              className={`bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-white font-semibold px-4 py-1.5 rounded-lg flex items-center gap-2 transition shadow-md ${task.status !== 'pending' ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              <FaTimesCircle /> Cancel
-            </button>
-            <button
-              onClick={() => onDelete && onDelete(task.id)}
-              className="bg-gradient-to-r from-red-400 to-pink-500 hover:from-red-500 hover:to-pink-600 text-white font-semibold px-4 py-1.5 rounded-lg flex items-center gap-2 transition shadow-md"
-            >
-              <FaTrash /> Delete
-            </button>
-          </div>
+          <div className="self-end flex flex-wrap gap-2">
+  <button
+    onClick={() => onDone(task.id)}
+    disabled={task.status !== 'pending'}
+    className={`bg-gradient-to-r from-green-400 to-blue-400 hover:from-green-500 hover:to-blue-500 text-white text-sm font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition shadow-md ${task.status !== 'pending' ? 'opacity-50 cursor-not-allowed' : ''}`}
+  >
+    <FaCheckCircle className="text-sm" /> 
+    <span className="hidden sm:inline">Done</span>
+  </button>
+  <button
+    onClick={() => onCancel && onCancel(task.id)}
+    disabled={task.status !== 'pending'}
+    className={`bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-white text-sm font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition shadow-md ${task.status !== 'pending' ? 'opacity-50 cursor-not-allowed' : ''}`}
+  >
+    <FaTimesCircle className="text-sm" /> 
+    <span className="hidden sm:inline">Cancel</span>
+  </button>
+  <button
+    onClick={() => onDelete && onDelete(task.id)}
+    className="bg-gradient-to-r from-red-400 to-pink-500 hover:from-red-500 hover:to-pink-600 text-white text-sm font-medium px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition shadow-md"
+  >
+    <FaTrash className="text-sm" /> 
+    <span className="hidden sm:inline">Delete</span>
+  </button>
+</div>
         </div>
       ))
     )}
